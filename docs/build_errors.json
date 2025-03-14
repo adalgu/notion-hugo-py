@@ -1,0 +1,31 @@
+{
+  "timestamp": "2025-03-14 17:48:48",
+  "errors": [
+    {
+      "file": "content/posts/경제-집은-사는-것인가-사는-곳인가.md",
+      "error": "파일에서 문제가 있는 shortcode 'tweet'를 발견했습니다.",
+      "type": "shortcode"
+    },
+    {
+      "file": "content/posts/트위터-shortcode-test.md",
+      "error": "파일에서 문제가 있는 shortcode 'tweet'를 발견했습니다.",
+      "type": "shortcode"
+    },
+    {
+      "file": "content/posts/대환장-성공후기-중복가입한-개인실손의료보험-중지.md",
+      "error": "파일에서 문제가 있는 shortcode 'tweet'를 발견했습니다.",
+      "type": "shortcode"
+    },
+    {
+      "file": "content/posts/the-importace-of-smaller-steps.md",
+      "error": "파일에서 문제가 있는 shortcode 'tweet'를 발견했습니다.",
+      "type": "shortcode"
+    }
+  ],
+  "excluded_files": [
+    "content/posts/대환장-성공후기-중복가입한-개인실손의료보험-중지.md",
+    "content/posts/the-importace-of-smaller-steps.md",
+    "content/posts/경제-집은-사는-것인가-사는-곳인가.md",
+    "content/posts/트위터-shortcode-test.md"
+  ]
+}

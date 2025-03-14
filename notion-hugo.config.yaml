@@ -1,0 +1,5 @@
+# mount:
+#   databases:
+#   - database_id: 1b67522e-eb2f-813d-9645-e8be1fd0ce0c
+#     target_folder: posts
+#   manual: true
