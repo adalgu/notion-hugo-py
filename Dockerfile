@@ -1,4 +1,4 @@
-FROM klakegg/hugo:0.140.0-ext-ubuntu
+FROM klakegg/hugo:0.101.0-ext-ubuntu
 
 # Install Python and dependencies
 RUN apt-get update && apt-get install -y \
@@ -20,8 +20,10 @@ RUN chmod +x /app/notion_hugo_app.py /app/run_hugo.py
 RUN pip3 install --no-cache-dir \
     pyyaml \
     python-dotenv \
-    notion-client
-
+    notion-client \
+    fs \
+    tabulate 
+    
 # Create directory for temporary files
 RUN mkdir -p /app/data/error_temp
 
