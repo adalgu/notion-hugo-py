@@ -49,3 +49,4 @@ Thumbs.db
 .notion-hugo-state.json
 .notion-hugo-state.json.bak
 data/error_temp/
+.vercel

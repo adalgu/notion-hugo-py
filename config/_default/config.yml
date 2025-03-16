@@ -1,4 +1,4 @@
-baseURL: "https://gunn.kim"
+baseURL: "/"
 title: Exobrain
 paginate.pagerSize: 5
 theme: PaperMod
