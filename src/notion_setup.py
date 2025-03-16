@@ -122,15 +122,37 @@ class NotionSetup:
                 properties=properties
             )
         else:
+            # 워크스페이스 루트에 생성하려면 사용자의 워크스페이스 루트 페이지 ID가 필요함
+            # Notion API는 더 이상 직접적인 parent={"type": "workspace"}를 지원하지 않음
             print("워크스페이스 루트에 데이터베이스 생성 중...")
             try:
+                # 먼저 사용자의 루트 페이지 가져오기 시도
+                search_results = self.notion.search(
+                    query="",
+                    filter={
+                        "value": "page",
+                        "property": "object"
+                    },
+                    page_size=10
+                )
+                root_pages = search_results.get("results", [])
+                
+                if not root_pages:
+                    raise ValueError("워크스페이스 루트 페이지를 찾을 수 없습니다. "
+                                    "--parent-page 옵션을 사용하여 특정 페이지 ID를 지정하세요.")
+                
+                # 첫 번째 페이지를 루트 페이지로 사용
+                root_page_id = root_pages[0]["id"]
+                
+                # 선택한 페이지에 데이터베이스 생성
                 database = self.notion.databases.create(
-                    parent={"type": "workspace"},
+                    parent={"type": "page_id", "page_id": root_page_id},
                     title=title,
                     properties=properties
                 )
+                
             except APIResponseError as e:
-                if "parent.type" in str(e):
+                if "parent.type" in str(e) or "parent.page_id" in str(e):
                     raise ValueError("워크스페이스 루트에 데이터베이스를 생성할 권한이 없습니다. "
                                     "상위 페이지 ID를 지정하거나 통합 권한을 확인하세요.") from e
                 raise

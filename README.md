@@ -2,105 +2,205 @@
 
 노션 데이터베이스/페이지를 마크다운으로 변환하고, Hugo 빌드 전 오류 파일을 처리하여 완전한 빌드 파이프라인을 제공하는 Python 애플리케이션입니다.
 
-## 개요
+## 전체 흐름도
 
-이 프로젝트는 다음 기능을 제공합니다:
-
-1. **Notion 데이터베이스 설정**: 새 노션 데이터베이스 자동 생성 및 기존 데이터베이스 마이그레이션
-2. **증분 처리 시스템**: 변경된 페이지만 처리하여 성능 최적화
-3. **Notion 콘텐츠 가져오기**: Notion API를 통해 데이터베이스와 페이지에서 콘텐츠를 가져옵니다.
-4. **마크다운 변환**: Notion 블록을 Hugo 호환 마크다운으로 변환합니다.
-5. **Hugo 전처리**: 빌드 오류를 일으킬 수 있는 문제 파일을 식별하고 처리합니다.
-6. **Hugo 빌드**: 최종 웹사이트를 생성합니다.
+```mermaid
+flowchart TB
+    Start([시작]) --> HasToken{API 키가 있나요?}
+    HasToken -- 예 --> HasDB{Notion DB가 있나요?}
+    HasToken -- 아니오 --> GetToken[API 키 설정]
+    GetToken --> HasDB
+    
+    HasDB -- 예 --> Continue{전체/증분?}
+    HasDB -- 아니오 --> SetupChoice{설정 방식?}
+    
+    SetupChoice -- 새 DB 생성\n(새 프로젝트 시작) --> CreateDB[새 노션 DB 생성]
+    SetupChoice -- 기존 DB 마이그레이션\n(기존 데이터 유지) --> MigrateDB[DB 마이그레이션]
+    
+    CreateDB --> Continue
+    MigrateDB --> Continue
+    
+    Continue -- 증분\n(기본값, 빠른 처리) --> IncrementalSync[변경된 페이지만 처리]
+    Continue -- 전체\n(초기화 또는 문제 해결) --> FullSync[모든 페이지 처리]
+    
+    IncrementalSync --> ProcessError{처리 오류?}
+    FullSync --> ProcessError
+    
+    ProcessError -- 있음 --> HandleError[오류 로그 생성 및\n문제 파일 격리]
+    ProcessError -- 없음 --> Hugo[Hugo 빌드]
+    HandleError --> Hugo
+    
+    Hugo --> Finish([완료])
+    
+    classDef setup fill:#e1f5fe,stroke:#01579b;
+    classDef process fill:#f5f5f5,stroke:#212121;
+    classDef decision fill:#fff9c4,stroke:#fbc02d;
+    classDef error fill:#ffebee,stroke:#c62828;
+    
+    class Start,Finish process;
+    class HasToken,HasDB,SetupChoice,Continue,ProcessError decision;
+    class GetToken,CreateDB,MigrateDB setup;
+    class IncrementalSync,FullSync,Hugo process;
+    class HandleError error;
+```
 
 ## 목차
 
-- [설치 방법](#설치-방법)
-- [초기 설정](#초기-설정)
-  - [Notion 데이터베이스 설정](#notion-데이터베이스-설정)
-  - [기존 데이터베이스 마이그레이션](#기존-데이터베이스-마이그레이션)
-  - [수동 설정](#수동-설정)
-- [파이프라인 실행](#파이프라인-실행)
-  - [전체 파이프라인 실행](#전체-파이프라인-실행)
+- [5분 퀵 스타트](#5분-퀵-스타트)
+- [핵심 기능](#핵심-기능)
+  - [노션-Hugo 동기화](#노션-hugo-동기화)
   - [증분 처리 옵션](#증분-처리-옵션)
-  - [기타 실행 옵션](#기타-실행-옵션)
-- [Docker 환경](#docker-환경)
-  - [기본 사용법](#기본-사용법)
-  - [Docker 환경 변수](#docker-환경-변수)
-  - [Docker 고급 옵션](#docker-고급-옵션)
-- [주요 기능](#주요-기능)
-- [프로젝트 구조](#프로젝트-구조)
-- [문제 해결](#문제-해결)
+  - [Hugo 빌드 및 배포](#hugo-빌드-및-배포)
+- [고급 기능](#고급-기능)
+  - [데이터베이스 설정](#데이터베이스-설정)
+  - [데이터베이스 마이그레이션](#데이터베이스-마이그레이션)
+  - [수동 설정](#수동-설정)
+- [개발 및 운영](#개발-및-운영)
+  - [Docker 및 CI/CD 환경](#docker-및-cicd-환경)
+  - [로그 및 모니터링](#로그-및-모니터링)
+  - [테스트 및 품질 관리](#테스트-및-품질-관리)
+- [참조](#참조)
+  - [노션 ID 이해하기](#노션-id-이해하기)
+  - [문제 해결](#문제-해결)
+  - [프로젝트 구조](#프로젝트-구조)
 - [라이선스](#라이선스)
 
-## 설치 방법
+## 5분 퀵 스타트
 
-1. 저장소 클론
+Notion-Hugo 통합 파이프라인을 빠르게 시작하는 방법입니다:
 
+1. **저장소 클론 및 설치**
 ```bash
-git clone https://github.com/yourusername/notion-hugo-py.git
+git clone https://github.com/adalgu/notion-hugo-py.git
 cd notion-hugo-py
-```
-
-2. 필요한 패키지 설치
-
-```bash
 pip install notion-client python-dotenv pyyaml fs tabulate
 ```
 
-3. `.env` 파일 생성 및 Notion API 토큰 설정
+2. **API 키 설정**
+   - [노션 통합 페이지](https://www.notion.so/my-integrations)에서 새 통합 생성
+   - 권한: `Read content`, `Update content`, `Insert content` 필요 
+   - 생성된 토큰을 `.env` 파일에 저장: `NOTION_TOKEN=your_token`
 
+3. **노션 데이터베이스 설정**
+```bash
+python notion_hugo_app.py -i
 ```
-NOTION_TOKEN=your_notion_integration_token
-# 선택 사항: 설정 파일 경로 지정 (기본값: 프로젝트 루트의 notion-hugo.config.yaml)
-# NOTION_HUGO_CONFIG=/path/to/your/config.yaml
+> 처음 실행 시 안내에 따라 진행하세요. 데이터베이스 설정은 최초 1회만 필요합니다.
+
+4. **동기화 실행**
+```bash
+python notion_hugo_app.py
+```
+> 성공 시: "동기화 완료" 메시지 출력, Hugo 사이트 빌드됨
+
+5. **노션에서 콘텐츠 작성 후 동기화**
+```bash
+# 변경 사항을 동기화하려면 다시 실행
+python notion_hugo_app.py
 ```
 
-## 초기 설정
+## 핵심 기능
 
-### Notion 데이터베이스 설정
+이 섹션에서는 Notion-Hugo 파이프라인의 핵심 기능을 설명합니다. 이 기능들은 모든 사용자에게 필수적인 기본 워크플로우를 제공합니다.
 
-#### 워크스페이스 루트에 데이터베이스 생성
+### 노션-Hugo 동기화
+
+노션-Hugo 파이프라인의 핵심 기능은 노션의 콘텐츠를 Hugo 웹사이트로 변환하는 것입니다:
 
 ```bash
-python notion_hugo_app.py --setup-db --db-name="Hugo Blog Posts"
+# 기본 동기화 (변경된 페이지만 처리)
+python notion_hugo_app.py
+
+# 콘텐츠 변환 후 사이트 확인 (Hugo 서버 모드)
+python notion_hugo_app.py --hugo-args="server --disableFastRender"
 ```
 
-#### 특정 페이지 아래에 데이터베이스 생성
+이 명령은 다음 작업을 자동으로 수행합니다:
+
+1. **노션 콘텐츠 가져오기**: 노션 API를 통해 데이터 추출
+2. **마크다운 변환**: 노션 블록을 Hugo 호환 마크다운으로 변환
+3. **Hugo 빌드**: 변환된 마크다운을 사용하여 정적 사이트 생성
+
+### 증분 처리 옵션
+
+성능 최적화를 위해 증분 처리가 기본 설정되어 있습니다:
+
+| 옵션 | 명령어 | 설명 | 사용 시점 |
+|------|--------|------|----------|
+| **증분 처리** | `--incremental` | 변경된 페이지만 처리 (기본값) | 일상적인 사용 |
+| **전체 처리** | `--full-sync` | 모든 페이지 강제 재처리 | 초기화 또는 문제 해결 시 |
+| **변경 확인** | `--dry-run` | 변경사항만 확인 (실제 변환 없음) | 영향 범위 확인 시 |
 
 ```bash
-python notion_hugo_app.py --setup-db --parent-page=YOUR_PAGE_ID --db-name="Hugo Blog Posts"
+# 모든 페이지 강제 재처리
+python notion_hugo_app.py --full-sync
+
+# 변경사항만 확인 (실제 변환 없음)
+python notion_hugo_app.py --dry-run
 ```
 
-#### 옵션
+### Hugo 빌드 및 배포
 
-- `--parent-page`: 데이터베이스를 생성할 상위 노션 페이지 ID (선택 사항)
-- `--db-name`: 생성할 데이터베이스 이름 (기본값: "Hugo Blog Posts")
-- `--target-folder`: 콘텐츠 대상 폴더 (기본값: "posts")
-
-### 기존 데이터베이스 마이그레이션
-
-#### 워크스페이스 루트로 마이그레이션
+Hugo 빌드 단계를 세밀하게 제어할 수 있습니다:
 
 ```bash
-python notion_hugo_app.py --migrate-db --source-db=SOURCE_DB_ID
+# Notion 변환만 실행 (Hugo 빌드 없음)
+python notion_hugo_app.py --notion-only
+
+# Hugo 전처리 및 빌드만 실행
+python notion_hugo_app.py --hugo-only
+
+# Hugo에 추가 인자 전달
+python notion_hugo_app.py --hugo-args="server -D --bind=0.0.0.0 --port=8080"
 ```
 
-#### 특정 페이지로 마이그레이션
+## 고급 기능
 
-```bash
-python notion_hugo_app.py --migrate-db --source-db=SOURCE_DB_ID --parent-page=TARGET_PAGE_ID
-```
+이 섹션에서는 Notion-Hugo 파이프라인의 고급 기능을 설명합니다. 이 기능들은 특별한 요구사항이 있는 사용자를 위한 추가 기능입니다.
 
-#### 옵션
+### 데이터베이스 설정
 
-- `--source-db`: 소스 데이터베이스 ID (필수)
-- `--parent-page`: 새 데이터베이스를 생성할 상위 노션 페이지 ID (선택 사항)
-- `--target-folder`: 콘텐츠 대상 폴더 (기본값: "posts")
+데이터베이스 설정에는 두 가지 방법이 있습니다:
+
+1. **대화형 모드** (권장):
+   ```bash
+   python notion_hugo_app.py -i
+   ```
+   화면의 안내에 따라 진행하면 됩니다.
+
+2. **명령줄 옵션**:
+   ```bash
+   # 워크스페이스 루트에 데이터베이스 생성
+   python notion_hugo_app.py --setup-db --db-name="Hugo Blog Posts"
+   
+   # 특정 페이지 아래에 데이터베이스 생성
+   python notion_hugo_app.py --setup-db --parent-page=YOUR_PAGE_ID --db-name="Hugo Blog Posts"
+   ```
+
+### 데이터베이스 마이그레이션
+
+이미 노션 데이터베이스가 있지만 이 도구의 구조에 맞지 않는 경우, 마이그레이션을 사용합니다:
+
+1. **대화형 모드** (권장):
+   ```bash
+   python notion_hugo_app.py -i
+   ```
+   안내에 따라 "기존 노션 데이터베이스 마이그레이션" 옵션을 선택하세요.
+
+2. **명령줄 옵션**:
+   ```bash
+   # 워크스페이스 루트로 마이그레이션
+   python notion_hugo_app.py --migrate-db --source-db=SOURCE_DB_ID
+   
+   # 특정 페이지로 마이그레이션
+   python notion_hugo_app.py --migrate-db --source-db=SOURCE_DB_ID --parent-page=TARGET_PAGE_ID
+   ```
+
+> **참고**: 데이터베이스 설정과 마이그레이션은 서로 대체 관계입니다. 기존 콘텐츠를 유지하려면 마이그레이션을, 새로 시작하려면 데이터베이스 설정을 선택하세요.
 
 ### 수동 설정
 
-`notion-hugo.config.yaml` 파일에 Notion 데이터베이스와 페이지를 수동으로 설정할 수 있습니다:
+`notion-hugo.config.yaml` 파일을 직접 수정하여 설정할 수도 있습니다:
 
 ```yaml
 mount:
@@ -108,10 +208,10 @@ mount:
   databases:
     - database_id: "your_database_id"
       target_folder: "posts"
-  # 개별 페이지 지정
-  # pages:
-  #   - page_id: "your_page_id"
-  #     target_folder: "pages"
+  # 개별 페이지 지정 (선택사항)
+  pages:
+    - page_id: "your_page_id"
+      target_folder: "pages"
 ```
 
 또는 단일 Notion 페이지에서 하위 데이터베이스와 페이지를 자동으로 가져오도록 설정:
@@ -122,64 +222,14 @@ mount:
   page_url: "https://www.notion.so/your-workspace/your-page-id"
 ```
 
-## 파이프라인 실행
+## 개발 및 운영
 
-### 전체 파이프라인 실행
+### Docker 및 CI/CD 환경
 
-기본 명령어로 Notion 페이지 가져오기 및 Hugo 빌드까지 모두 실행:
-
-```bash
-python notion_hugo_app.py
-```
-
-### 증분 처리 옵션
-
-#### 변경된 페이지만 처리 (기본값)
+#### Docker 환경 설정
 
 ```bash
-python notion_hugo_app.py --incremental
-```
-
-#### 모든 페이지 강제 재처리
-
-```bash
-python notion_hugo_app.py --full-sync
-```
-
-#### 변경사항만 확인 (실제 변환 없음)
-
-```bash
-python notion_hugo_app.py --dry-run
-```
-
-#### 메타데이터 파일 경로 지정
-
-```bash
-python notion_hugo_app.py --state-file=/path/to/your/state.json
-```
-
-### 기타 실행 옵션
-
-```bash
-# Notion 변환만 실행
-python notion_hugo_app.py --notion-only
-
-# Hugo 전처리 및 빌드만 실행
-python notion_hugo_app.py --hugo-only
-
-# 빌드 단계 건너뛰기
-python notion_hugo_app.py --no-build
-
-# Hugo에 추가 인자 전달 (예: 서버 실행)
-python notion_hugo_app.py --hugo-args="server -D"
-```
-
-## Docker 환경
-
-### 기본 사용법
-
-```bash
-# 환경 변수 설정 (.env 파일에 NOTION_TOKEN 설정)
+# 환경 변수 설정
 echo "NOTION_TOKEN=your_notion_token" > .env
 
 # 개발 서버 실행
@@ -187,141 +237,174 @@ docker-compose up
 
 # 백그라운드에서 실행
 docker-compose up -d
-
-# 로그 확인
-docker-compose logs -f
-
-# 서버 중지
-docker-compose down
 ```
 
-### Docker 환경 변수
+#### GitHub Actions 예시
 
-`docker-compose.yml` 파일에서 다음 환경 변수를 설정할 수 있습니다:
+`.github/workflows/deploy.yml` 파일 예시:
 
-- `NOTION_TOKEN`: Notion API 토큰 (필수)
-- `HUGO_ENVIRONMENT`: Hugo 환경 (기본값: development)
-- `HUGO_ENABLEGITINFO`: Git 정보 활성화 (기본값: true)
+```yaml
+name: Build and Deploy Hugo
 
-### Docker 고급 옵션
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # 6시간마다 실행
+  workflow_dispatch:  # 수동 트리거 허용
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install notion-client python-dotenv pyyaml fs tabulate
+          
+      - name: Run Notion-Hugo sync
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: python notion_hugo_app.py
+        
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+```
+
+### 로그 및 모니터링
+
+애플리케이션은 다음과 같은 로깅 기능을 제공합니다:
+
+- **변환 로그**: 변환 과정의 각 단계를 기록
+- **오류 문서**: `docs/build_errors.json`에 빌드 실패 항목 기록
+- **문제 파일 격리**: 문제가 있는 파일을 `data/error_temp/` 디렉토리에 저장
+
+로그 레벨 설정:
+```bash
+# 자세한 로그 출력
+python notion_hugo_app.py --verbose
+
+# 오류 메시지만 출력
+python notion_hugo_app.py --quiet
+```
+
+### 테스트 및 품질 관리
+
+#### 단위 테스트 실행
 
 ```bash
-# 특정 명령어로 실행 (예: 증분 처리 비활성화)
-docker-compose run --rm notion-hugo --full-sync
+# 모든 테스트 실행
+python -m unittest discover
 
-# 테스트 모드 실행
-docker-compose run --rm notion-hugo --dry-run
-
-# Hugo 서버 옵션 변경
-docker-compose run --rm notion-hugo --hugo-args="server --minify --disableFastRender"
-
-# 다른 메타데이터 파일 사용
-docker-compose run --rm notion-hugo --state-file=custom-state.json
+# 특정 모듈 테스트
+python -m unittest tests.test_notion_api
 ```
 
-## 주요 기능
+#### 코드 품질 확인
 
-### Notion 데이터베이스 관리
+```bash
+# 린터 실행
+flake8 src
 
-- 노션 워크스페이스 루트 또는 특정 페이지에 데이터베이스 자동 생성
-- 샘플 블로그 포스트 자동 생성으로 빠른 시작
-- 기존 데이터베이스에서 Hugo 호환 형식으로 마이그레이션
-- 타입 검증 및 속성 자동 변환
+# 타입 검사
+mypy src
+```
 
-### 증분 처리 시스템
+## 참조
 
-- JSON 기반 메타데이터 저장으로 변경된 페이지만 처리
-- 페이지의 `last_edited_time`을 추적하여 변경사항 감지
-- 진행 상황 상세 로깅 및 통계 제공
-- 고아 파일 자동 정리 (더 이상 존재하지 않는 페이지)
+### 노션 ID 이해하기
 
-### Notion 블록 지원
+노션에서는 두 종류의 ID가 있으며, 이들을 구분하는 것이 중요합니다:
 
-- 단락, 제목, 목록, 할 일 목록, 토글, 코드 블록, 인용, 구분선, 이미지
-- 테이블, 컬럼, 임베드, 북마크, 외부 파일
-- 중첩 블록 지원 (토글 안의 목록 등)
-- Notion 프론트매터 자동 변환 (태그, 생성일, 카테고리 등)
+| ID 유형 | 설명 | 사용 시점 |
+|--------|------|----------|
+| **페이지 ID** | 노션의 개별 페이지를 식별합니다. | `--parent-page` 옵션 사용 시 |
+| **데이터베이스 ID** | 노션 데이터베이스를 식별합니다. | `--source-db` 옵션 사용 시, DB 마운트 설정 시 |
 
-### Hugo 전처리 및 빌드
+### ID 찾는 방법
 
-- 빌드 오류가 발생할 수 있는 파일 자동 감지 및 처리
-- 오류 로그 생성 및 문제 파일 추적
-- shortcode 지원 및 검증
-- 증분 빌드 지원 (변경된 파일만 처리)
+1. **URL에서 찾기**: 
+   - 노션 페이지/DB 열기 → URL 확인
+   - 형식: `https://www.notion.so/{workspace}/{ID}`
+   - 예: `https://www.notion.so/myworkspace/8a021de72bda434db255d7cc94ebb567`
+   - ID는 32자리 16진수로, 하이픈이 있거나 없을 수 있음
 
-## 프로젝트 구조
+2. **대화형 모드에서 쉽게 사용**:
+   - `python notion_hugo_app.py -i` 실행
+   - URL을 붙여넣으면 자동으로 ID 추출
+
+### 문제 해결
+
+#### Notion API 오류
+
+- **증상**: "NOTION_TOKEN 환경 변수가 설정되지 않았습니다" 또는 API 권한 오류
+- **해결**:
+  1. `.env` 파일에 올바른 토큰이 설정되어 있는지 확인
+  2. 노션 통합에 필요한 권한이 부여되었는지 확인 (Read/Update/Insert)
+  3. 통합이 데이터베이스와 공유되었는지 확인 (노션 UI에서 "공유" 메뉴)
+
+#### ID 구분 관련 문제
+
+- **증상**: "소스 데이터베이스를 찾을 수 없습니다" 또는 ID 관련 오류
+- **해결**:
+  1. 대화형 모드 (`-i` 플래그)를 사용하여 ID 검증 활용
+  2. DB ID와 페이지 ID를 올바른 곳에 사용했는지 확인
+  3. 노션 URL에서 올바르게 ID를 추출했는지 확인
+
+#### 증분 처리 관련 문제
+
+- **증상**: 동기화 오류 또는 일부 콘텐츠 누락
+- **해결**:
+  1. `--full-sync` 옵션으로 전체 동기화 실행
+  2. 손상된 메타데이터 파일이 의심되면 `.notion-hugo-state.json` 삭제 후 재실행
+
+#### Hugo 빌드 오류
+
+- **증상**: Hugo 빌드 오류 또는 렌더링 문제
+- **해결**:
+  1. Hugo가 시스템에 설치되어 있는지 확인
+  2. Hugo 테마가 올바르게 설치되었는지 확인
+  3. 문제 파일은 `docs/build_errors.json`에서 확인할 수 있습니다
+
+### 프로젝트 구조
 
 ```
 notion-hugo-py/
-├── src/
-│   ├── config.py          # 설정 관리
-│   ├── file.py            # 파일 처리
-│   ├── helpers.py         # 유틸리티 함수
-│   ├── hugo_processor.py  # Hugo 전처리 및 빌드 관리
-│   ├── index.py           # Notion 변환 로직
+├── notion_hugo_app.py    # 메인 실행 파일
+├── notion-hugo.config.yaml # 설정 파일
+├── src/                  # 소스 코드
+│   ├── notion_api.py     # Notion API 통합
 │   ├── markdown_converter.py # 마크다운 변환
-│   ├── metadata.py        # 증분 처리 메타데이터 관리
-│   ├── notion_api.py      # Notion API 통합
-│   ├── notion_hugo.py     # 통합 파이프라인
-│   ├── notion_setup.py    # 노션 DB 설정 및 마이그레이션
-│   ├── render.py          # 렌더링 로직
-│   └── types.py           # 타입 정의
-├── data/
-│   └── error_temp/        # 문제 파일 임시 보관소
-├── docs/
-│   ├── build_errors.json  # 빌드 오류 로그
-│   └── development_logs/  # 개발 로그
-├── .notion-hugo-state.json # 증분 처리 메타데이터
-├── docker-compose.yml     # Docker 설정
-├── Dockerfile             # Docker 빌드 설정
-├── notion_hugo_app.py     # 메인 실행 파일
-└── notion-hugo.config.yaml # 설정 파일
+│   ├── hugo_processor.py # Hugo 전처리 및 빌드
+│   ├── notion_hugo.py    # 메인 파이프라인 로직
+│   ├── file.py           # 파일 처리
+│   ├── metadata.py       # 증분 처리 메타데이터
+│   ├── notion_setup.py   # 노션 DB 설정/마이그레이션
+│   ├── types.py          # 타입 정의
+│   ├── render.py         # 렌더링 유틸리티
+│   ├── config.py         # 설정 관리 
+│   ├── helpers.py        # 헬퍼 유틸리티
+│   ├── cli_utils.py      # CLI 유틸리티
+│   └── ...
+└── ...
 ```
 
-## 문제 해결
+각 모듈은 독립적인 책임을 가지며, 모듈 간 의존성을 최소화하였습니다:
 
-### Notion API 오류
-
-- Notion 통합 토큰이 올바르게 설정되었는지 확인하세요.
-- 통합에 필요한 권한이 부여되었는지 확인하세요.
-- 데이터베이스 ID와 페이지 ID가 올바른지 확인하세요.
-
-### 증분 처리 관련 문제
-
-- 메타데이터 파일(`.notion-hugo-state.json`)이 손상된 경우, 파일을 삭제하고 `--full-sync` 옵션으로 재실행하세요.
-- 동기화 일관성 문제가 발생하면 `--full-sync` 옵션을 사용하여 모든 페이지를 다시 처리하세요.
-- 충돌 문제가 발생하면 백업 파일(`.notion-hugo-state.json.bak`)을 확인하세요.
-
-### Hugo 빌드 오류
-
-- Hugo가 시스템에 설치되어 있는지 확인하세요.
-- Hugo 테마가 올바르게 설치되었는지 확인하세요.
-- 문제 파일은 `docs/build_errors.json`에서 확인할 수 있습니다.
-
-### Docker 관련 문제
-
-#### 포트 충돌
-
-이미 1313 포트가 사용 중인 경우, `docker-compose.yml` 파일에서 포트 매핑을 변경하세요:
-
-```yaml
-ports:
-  - "1314:1313" # 호스트의 1314 포트를 컨테이너의 1313 포트에 매핑
-```
-
-#### 권한 문제
-
-볼륨 마운트에서 권한 문제가 발생할 경우, Docker를 실행하는 사용자가 프로젝트 디렉토리에 대한 적절한 권한을 가지고 있는지 확인하세요.
-
-#### 메타데이터 파일 접근 문제
-
-Docker 볼륨 설정이 메타데이터 파일(`.notion-hugo-state.json`)을 마운트하는지 확인하세요. `docker-compose.yml` 파일에 다음 설정이 있어야 합니다:
-
-```yaml
-volumes:
-  - ./:/app
-  - ./.notion-hugo-state.json:/app/.notion-hugo-state.json
-```
+- **notion_api.py**: Notion API 액세스 및 데이터 추출 담당
+- **markdown_converter.py**: Notion 블록을 마크다운으로 변환
+- **hugo_processor.py**: Hugo 빌드 프로세스 관리
+- **notion_hugo.py**: 전체 파이프라인 통합 및 조정
+- **metadata.py**: 증분 처리를 위한 상태 관리
+- **notion_setup.py**: 데이터베이스 설정 및 마이그레이션 로직
 
 ## 라이선스
 

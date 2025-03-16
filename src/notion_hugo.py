@@ -72,6 +72,11 @@ def parse_arguments():
     incremental_group.add_argument("--dry-run", action="store_true",
                                    help="실제 변환 없이 변경사항만 확인")
     
+    # 대화형 모드 옵션
+    interactive_group = parser.add_argument_group('대화형 모드')
+    interactive_group.add_argument("--interactive", "-i", action="store_true", 
+                                  help="대화형 설정 모드로 실행")
+    
     return parser.parse_args()
 
 
@@ -318,7 +323,7 @@ def batch_process_pages_with_metadata(pages: List[Dict[str, Any]], notion: Clien
             # 마지막 편집 시간 저장
             last_edited = page.get("last_edited_time")
             
-            # 페이지 처리
+            # 페이지 처리 (수정된 save_page 함수는 target_folder를 받음)
             content = save_page(page, notion, target_folder)
             
             # 성공 정보 추가
@@ -598,14 +603,16 @@ def run_setup_database(parent_page_id: Optional[str], database_name: str, target
         # 환경 변수 로드
         load_dotenv()
         
+        from .cli_utils import print_header, print_step, print_success, print_error, print_info, print_id_info
+        
         if not os.environ.get('NOTION_TOKEN'):
             raise ValueError("NOTION_TOKEN 환경 변수가 설정되지 않았습니다")
         
-        print("=== 노션 데이터베이스 설정 시작 ===")
+        print_header("노션 데이터베이스 설정")
         
         # 생성 위치 표시
         location = f"상위 페이지 '{parent_page_id}'" if parent_page_id else "워크스페이스 루트"
-        print(f"{location}에 '{database_name}' 데이터베이스를 생성합니다.")
+        print_info(f"{location}에 '{database_name}' 데이터베이스를 생성합니다.")
         
         # NotionSetup 인스턴스 생성
         setup_config: NotionSetupConfig = {
@@ -617,12 +624,13 @@ def run_setup_database(parent_page_id: Optional[str], database_name: str, target
         
         # 데이터베이스 생성
         try:
+            print_step("1", "데이터베이스 생성")
             database = setup.create_hugo_database()
         except ValueError as e:
             if "워크스페이스 루트에 데이터베이스를 생성할 권한이 없습니다" in str(e) and not parent_page_id:
-                print("[Error] 워크스페이스 루트에 데이터베이스를 생성할 권한이 없습니다.")
-                print("1. Notion 통합(integration) 설정에서 '워크스페이스 콘텐츠 생성' 기능을 활성화하거나")
-                print("2. --parent-page 옵션을 사용하여 특정 페이지 아래에 데이터베이스를 생성하세요.")
+                print_error("워크스페이스 루트에 데이터베이스를 생성할 권한이 없습니다.")
+                print_info("1. Notion 통합(integration) 설정에서 '워크스페이스 콘텐츠 생성' 기능을 활성화하거나")
+                print_info("2. 대화형 모드를 사용하여 특정 페이지 아래에 데이터베이스를 생성하세요.")
                 return {
                     "success": False,
                     "error": str(e)
@@ -630,17 +638,24 @@ def run_setup_database(parent_page_id: Optional[str], database_name: str, target
             raise
         
         # 샘플 포스트 생성
-        print("샘플 포스트 생성 중...")
-        setup.create_sample_post(database["id"])
+        print_step("2", "샘플 포스트 생성")
+        post = setup.create_sample_post(database["id"])
         
         # 설정 파일 업데이트
-        print(f"설정 파일 업데이트 중 (대상 폴더: {target_folder})...")
+        print_step("3", "설정 파일 업데이트")
+        print_info(f"대상 폴더: {target_folder}")
         setup.update_config(database["id"], target_folder)
         
-        print("\n=== 데이터베이스 설정 완료 ===")
-        print(f"1. Notion에서 데이터베이스 열기: https://notion.so/{database['id'].replace('-', '')}")
-        print("2. 설정 파일이 업데이트되었습니다")
-        print("3. 'python notion_hugo_app.py'를 실행하여 동기화를 시작하세요")
+        print_header("데이터베이스 설정 완료")
+        
+        # ID 정보 명확하게 표시
+        print_id_info("데이터베이스", database["id"], 
+                     f"https://notion.so/{database['id'].replace('-', '')}")
+        print_id_info("샘플 페이지", post["id"], 
+                     f"https://notion.so/{post['id'].replace('-', '')}")
+        
+        print_step("다음 단계", "노션-휴고 동기화 실행")
+        print_info("python notion_hugo_app.py 명령으로 동기화를 시작하세요")
         
         return {
             "success": True,
@@ -671,14 +686,17 @@ def run_migrate_database(source_db_id: str, parent_page_id: Optional[str], targe
         # 환경 변수 로드
         load_dotenv()
         
+        from .cli_utils import print_header, print_step, print_success, print_error, print_info, print_id_info
+        
         if not os.environ.get('NOTION_TOKEN'):
             raise ValueError("NOTION_TOKEN 환경 변수가 설정되지 않았습니다")
         
-        print("=== 노션 데이터베이스 마이그레이션 시작 ===")
+        print_header("노션 데이터베이스 마이그레이션")
         
         # 생성 위치 표시
         location = f"상위 페이지 '{parent_page_id}'" if parent_page_id else "워크스페이스 루트"
-        print(f"소스 데이터베이스 '{source_db_id}'에서 {location}으로 마이그레이션합니다.")
+        print_info(f"소스 데이터베이스 ID: {source_db_id}")
+        print_info(f"대상 위치: {location}")
         
         # NotionMigration 인스턴스 생성
         migration_config: NotionSetupConfig = {
@@ -689,15 +707,25 @@ def run_migrate_database(source_db_id: str, parent_page_id: Optional[str], targe
         migration = NotionMigration(migration_config)
         
         # 마이그레이션 실행
+        print_step("1", "소스 데이터베이스 검증")
         result = migration.migrate_database(source_db_id, target_folder)
         
         if result["success"]:
-            print("\n=== 데이터베이스 마이그레이션 완료 ===")
+            print_header("데이터베이스 마이그레이션 완료")
+            
+            # ID 정보 명확하게 표시
+            print_id_info("새 데이터베이스", result["new_database_id"], 
+                         f"https://notion.so/{result['new_database_id'].replace('-', '')}")
+            
+            print_step("다음 단계", "노션-휴고 동기화 실행")
+            print_info("python notion_hugo_app.py 명령으로 동기화를 시작하세요")
+            
             return {
                 "success": True,
                 "database_id": result["new_database_id"]
             }
         else:
+            print_error("마이그레이션에 실패했습니다.")
             return {
                 "success": False,
                 "error": result.get("error", "알 수 없는 오류")
@@ -705,6 +733,172 @@ def run_migrate_database(source_db_id: str, parent_page_id: Optional[str], targe
         
     except Exception as e:
         print(f"[Error] 데이터베이스 마이그레이션 실패: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+def run_interactive_setup() -> Dict[str, Any]:
+    """
+    대화형 모드로 설정을 진행합니다.
+    
+    Returns:
+        설정 결과
+    """
+    from .cli_utils import (clear_screen, print_header, print_step, print_info, 
+                           print_error, print_success, print_warning, ask_yes_no, 
+                           ask_input, show_menu, is_notion_page_id, 
+                           is_notion_database_id, extract_notion_id_from_url, 
+                           format_notion_id, print_id_info)
+    
+    try:
+        # 환경 변수 로드
+        load_dotenv()
+        
+        clear_screen()
+        print_header("노션-휴고 통합 설정 마법사")
+        
+        # 노션 API 키 확인
+        notion_token = os.environ.get('NOTION_TOKEN')
+        if not notion_token:
+            print_step("1", "노션 API 키 설정")
+            print_info("노션 API 키가 설정되어 있지 않습니다.")
+            print_info("노션 API 키는 .env 파일에 설정해야 합니다.")
+            print_info("방법: https://developers.notion.com/docs/getting-started")
+            print_info("1. www.notion.so/my-integrations 방문")
+            print_info("2. 새 통합 생성 및 토큰 복사")
+            print_info("3. '.env' 파일에 NOTION_TOKEN=your_token 형식으로 추가")
+            
+            if ask_yes_no("지금 API 키를 입력하시겠습니까?"):
+                api_key = ask_input("노션 API 키를 입력하세요")
+                
+                # .env 파일 생성 또는 업데이트
+                with open(".env", "w") as f:
+                    f.write(f"NOTION_TOKEN={api_key}\n")
+                
+                print_success(".env 파일에 API 키가 설정되었습니다.")
+                notion_token = api_key
+            else:
+                print_error("노션 API 키가 필요합니다. 나중에 다시 설정하세요.")
+                return {"success": False, "error": "API 키 누락"}
+        
+        # 설정 방식 선택
+        print_step("2", "설정 방식 선택")
+        setup_type = show_menu(
+            "사용할 설정 방식을 선택하세요",
+            [
+                "새 노션 데이터베이스 생성 (처음 사용자)",
+                "기존 노션 데이터베이스 마이그레이션 (이미 데이터가 있는 경우)"
+            ]
+        )
+        
+        # 기본 설정
+        target_folder = "posts"
+        
+        # 타겟 폴더 설정
+        print_step("3", "콘텐츠 폴더 설정")
+        print_info("콘텐츠가 저장될 Hugo 폴더 경로를 설정합니다.")
+        target_folder = ask_input("타겟 폴더명을 입력하세요", "posts")
+        
+        if setup_type == 0:  # 새 데이터베이스 생성
+            print_step("4", "데이터베이스 생성 위치")
+            location_type = show_menu(
+                "데이터베이스를 생성할 위치를 선택하세요",
+                [
+                    "워크스페이스 루트 (권장)",
+                    "특정 페이지 아래 (페이지 ID 필요)"
+                ]
+            )
+            
+            parent_page_id = None
+            if location_type == 1:  # 특정 페이지 아래
+                while True:
+                    parent_input = ask_input("상위 페이지 ID 또는 URL을 입력하세요")
+                    
+                    # URL에서 ID 추출 시도
+                    if "notion.so" in parent_input:
+                        extracted_id = extract_notion_id_from_url(parent_input)
+                        if extracted_id:
+                            parent_page_id = extracted_id
+                            print_success(f"페이지 ID가 URL에서 추출되었습니다: {format_notion_id(parent_page_id)}")
+                            break
+                    
+                    # 직접 ID 입력 검증
+                    elif is_notion_page_id(parent_input):
+                        parent_page_id = parent_input
+                        print_success(f"유효한 페이지 ID 형식입니다: {format_notion_id(parent_page_id)}")
+                        break
+                    
+                    print_warning("유효한 노션 페이지 ID나 URL이 아닙니다. 다시 시도하세요.")
+            
+            # 데이터베이스 이름 설정
+            print_step("5", "데이터베이스 이름 설정")
+            db_name = ask_input("데이터베이스 이름을 입력하세요", "Hugo Blog Posts")
+            
+            # 데이터베이스 설정 실행
+            print_step("6", "데이터베이스 생성")
+            return run_setup_database(parent_page_id, db_name, target_folder)
+        
+        else:  # 기존 데이터베이스 마이그레이션
+            print_step("4", "소스 데이터베이스 지정")
+            
+            while True:
+                source_input = ask_input("소스 데이터베이스 ID 또는 URL을 입력하세요")
+                
+                # URL에서 ID 추출 시도
+                if "notion.so" in source_input:
+                    extracted_id = extract_notion_id_from_url(source_input)
+                    if extracted_id:
+                        source_db_id = extracted_id
+                        print_success(f"데이터베이스 ID가 URL에서 추출되었습니다: {format_notion_id(source_db_id)}")
+                        break
+                
+                # 직접 ID 입력 검증
+                elif is_notion_database_id(source_input):
+                    source_db_id = source_input
+                    print_success(f"유효한 데이터베이스 ID 형식입니다: {format_notion_id(source_db_id)}")
+                    break
+                
+                print_warning("유효한 노션 데이터베이스 ID나 URL이 아닙니다. 다시 시도하세요.")
+            
+            # 대상 위치 설정
+            print_step("5", "대상 위치 선택")
+            location_type = show_menu(
+                "마이그레이션 대상 위치를 선택하세요",
+                [
+                    "워크스페이스 루트 (권장)",
+                    "특정 페이지 아래 (페이지 ID 필요)"
+                ]
+            )
+            
+            parent_page_id = None
+            if location_type == 1:  # 특정 페이지 아래
+                while True:
+                    parent_input = ask_input("대상 상위 페이지 ID 또는 URL을 입력하세요")
+                    
+                    # URL에서 ID 추출 시도
+                    if "notion.so" in parent_input:
+                        extracted_id = extract_notion_id_from_url(parent_input)
+                        if extracted_id:
+                            parent_page_id = extracted_id
+                            print_success(f"페이지 ID가 URL에서 추출되었습니다: {format_notion_id(parent_page_id)}")
+                            break
+                    
+                    # 직접 ID 입력 검증
+                    elif is_notion_page_id(parent_input):
+                        parent_page_id = parent_input
+                        print_success(f"유효한 페이지 ID 형식입니다: {format_notion_id(parent_page_id)}")
+                        break
+                    
+                    print_warning("유효한 노션 페이지 ID나 URL이 아닙니다. 다시 시도하세요.")
+            
+            # 데이터베이스 마이그레이션 실행
+            print_step("6", "데이터베이스 마이그레이션")
+            return run_migrate_database(source_db_id, parent_page_id, target_folder)
+        
+    except Exception as e:
+        print(f"[Error] 대화형 설정 실패: {str(e)}")
         return {
             "success": False,
             "error": str(e)
@@ -725,8 +919,24 @@ def main():
     hugo_args = args.hugo_args.split() if args.hugo_args else []
     
     try:
+        # 대화형 설정 모드
+        if args.interactive:
+            interactive_result = run_interactive_setup()
+            
+            if not interactive_result["success"]:
+                sys.exit(1)
+                
+            # 대화형 설정 후 실행 여부 확인
+            from .cli_utils import ask_yes_no, print_info
+            
+            if ask_yes_no("지금 바로 노션-휴고 동기화를 실행하시겠습니까?"):
+                print_info("노션-휴고 동기화를 시작합니다...")
+            else:
+                print_info("설정이 완료되었습니다. 나중에 'python notion_hugo_app.py' 명령으로 동기화를 실행하세요.")
+                return
+        
         # 데이터베이스 설정 모드
-        if args.setup_db:
+        elif args.setup_db:
             # parent_page는 옵션으로 변경
             setup_result = run_setup_database(
                 args.parent_page,  # None이 될 수 있음 (워크스페이스 루트에 생성)
@@ -741,7 +951,7 @@ def main():
             return
         
         # 데이터베이스 마이그레이션 모드
-        if args.migrate_db:
+        elif args.migrate_db:
             if not args.source_db:
                 raise ValueError("--source-db 인자가 필요합니다 (소스 데이터베이스 ID)")
             

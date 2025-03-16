@@ -166,4 +166,10 @@ class MetadataManager:
         Returns:
             SHA-256 해시값
         """
+        if content is None:
+            content = ""
+        
+        if not isinstance(content, str):
+            content = str(content)
+            
         return hashlib.sha256(content.encode('utf-8')).hexdigest()
