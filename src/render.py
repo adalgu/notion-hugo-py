@@ -6,7 +6,9 @@ from notion_client import Client
 from tabulate import tabulate
 
 from .types import BatchProcessResult, BatchProcessError, BatchProcessSkipped
-from .helpers import iterate_paginated_api, ensure_directory
+from .helpers import iterate_paginated_api
+from .property_mapper import PropertyMapper
+from .utils.file_utils import ensure_directory, get_filename_with_extension
 
 def convert_notion_to_markdown(blocks: List[Dict[str, Any]], notion: Client) -> str:
     """
@@ -259,17 +261,28 @@ def save_page(page: Dict[str, Any], notion: Client, target_folder: str) -> Optio
         # 페이지 속성 추출
         properties = get_page_properties(page)
         
-        # 제목이 없으면 기본값 사용
-        title = properties.get('title', 'Untitled')
+        # PropertyMapper 사용하여 필수/선택적 속성 처리
+        property_mapper = PropertyMapper()
         
-        # 페이지 ID 사용 (제목으로 파일명 생성 대신 ID 사용으로 변경)
+        # doNotRendering 확인
+        if property_mapper.should_skip_page(properties):
+            print(f"[Info] 페이지 {page.get('id')} 건너뜀: Do Not Render 설정됨")
+            return ""
+        
+        # 페이지 ID
         page_id = page.get('id', 'unknown')
+        
+        # 설정 로드
+        from .config import load_config
+        config = load_config()
         
         # 대상 디렉토리 및 파일 경로 설정
         target_dir = f"content/{target_folder}"
         ensure_directory(target_dir)
         
-        filepath = f"{target_dir}/{page_id}.md"
+        # 파일명 생성 (설정에 따라 UUID 또는 다른 형식)
+        filename = get_filename_with_extension(properties, page_id, config.get('filename', {}))
+        filepath = f"{target_dir}/{filename}"
         
         # 페이지 내용 가져오기
         blocks = list(iterate_paginated_api(notion.blocks.children.list, {'block_id': page['id']}))
@@ -278,20 +291,7 @@ def save_page(page: Dict[str, Any], notion: Client, target_folder: str) -> Optio
         markdown_content = convert_notion_to_markdown(blocks, notion)
         
         # 프론트매터 생성
-        frontmatter = {
-            'title': title,
-            'date': properties.get('created_time'),
-            'lastmod': properties.get('last_edited_time'),
-            'id': properties.get('id')
-        }
-        
-        # 태그 추가
-        if 'tags' in properties:
-            frontmatter['tags'] = properties['tags']
-        
-        # 카테고리 추가
-        if 'category' in properties:
-            frontmatter['categories'] = [properties['category']]
+        frontmatter = property_mapper.create_hugo_frontmatter(properties, page)
         
         # 파일 저장
         frontmatter_yaml = yaml.dump(frontmatter, default_flow_style=False, allow_unicode=True)
@@ -327,6 +327,7 @@ def batch_process_pages(pages: List[Dict[str, Any]], notion: Client, mount: Dict
     }
     
     target_folder = mount.get('target_folder', 'posts')
+    property_mapper = PropertyMapper()
     
     for page in pages:
         try:
@@ -338,14 +339,33 @@ def batch_process_pages(pages: List[Dict[str, Any]], notion: Client, mount: Dict
                 })
                 continue
             
+            # 페이지 속성 추출하여 doNotRendering 확인
+            properties = get_page_properties(page)
+            if property_mapper.should_skip_page(properties):
+                result["skipped"].append({
+                    "pageId": page['id'],
+                    "reason": "Do Not Render"
+                })
+                print(f"[Info] 페이지 {page.get('id')} 건너뜀: Do Not Render 설정됨")
+                continue
+            
             # 페이지 저장
             content = save_page(page, notion, target_folder)
             
             if content:
+                # 제목 가져오기 
+                title = properties.get('title', 'Untitled')
+                
+                # 설정 로드
+                from .config import load_config
+                config = load_config()
+                
+                # 파일명 생성 (설정에 따라 UUID 또는 다른 형식)
+                filename = get_filename_with_extension(properties, page['id'], config.get('filename', {}))
                 result["success"].append({
                     "pageId": page['id'],
-                    "title": page.get('properties', {}).get('Name', {}).get('title', [{}])[0].get('plain_text', 'Untitled') if page.get('properties') else 'Untitled',
-                    "path": f"content/{target_folder}/{page['id']}.md"
+                    "title": title,
+                    "path": f"content/{target_folder}/{filename}"
                 })
             else:
                 result["errors"].append({

@@ -154,6 +154,58 @@ python notion_hugo_app.py --hugo-only
 python notion_hugo_app.py --hugo-args="server -D --bind=0.0.0.0 --port=8080"
 ```
 
+### 노션-휴고 속성 매핑
+
+노션 데이터베이스의 속성과 Hugo 프론트매터 사이의 매핑 관계는 다음과 같습니다:
+
+#### 최소한 속성 (Minimal Properties)
+블로그 게시에 필수적인 기본 속성들입니다. 이것만 있어도 Hugo 블로그 발행이 가능합니다.
+
+| 노션 속성 | Hugo 프론트매터 | 설명 | 기본값 |
+|-----------|----------------|------|---------|
+| **Name** (title) | `title` | 페이지 제목 | "Untitled" |
+| **Date** (date) | `date` | 발행일 | 생성 시간(`created_time`) |
+| (시스템) | `notion_id` | 노션 페이지 ID | 페이지 ID |
+
+#### 추천 속성 (Recommended Properties)
+블로그 관리와 퀄리티를 위해 사용하는 것이 좋은 속성들입니다.
+
+##### 콘텐츠 제어 속성
+| 노션 속성 | Hugo 프론트매터 | 설명 |
+|-----------|----------------|------|
+| **skipRendering** (checkbox) | - | 노션→마크다운 변환 단계에서 이 페이지를 완전히 건너뜀 |
+| **isPublished** (checkbox) | `draft` | true면 공개(draft=false), false면 초안(draft=true) 상태로 설정 |
+| **expiryDate** (date) | `expiryDate` | 만료일 (이 날짜 이후에는 사이트에서 제거됨) |
+
+##### 메타데이터 속성
+| 노션 속성 | Hugo 프론트매터 | 설명 | 기본값/대체값 |
+|-----------|----------------|------|--------------|
+| **description** (text) | `description` | 페이지 설명 (메타 태그용, SEO에 중요) | - |
+| **summary** (text) | `summary` | 콘텐츠 요약 (미리보기에 사용) | `description` 값 |
+| **lastModified** (date) | `lastmod` | 마지막 수정일 | `last_edited_time` |
+| **slug** (text) | `slug` | URL 경로 | 제목에서 자동 생성 |
+| **author** (text) | `author` | 작성자 | - |
+| **weight** (number) | `weight` | 페이지 정렬 순서 (낮을수록 먼저 표시) | - |
+
+##### 분류 속성
+| 노션 속성 | Hugo 프론트매터 | 설명 | 기본값/대체값 |
+|-----------|----------------|------|--------------|
+| **categories** (multi-select) | `categories` | 카테고리 분류 (주요 분류) | - |
+| **tags** (multi-select) | `tags` | 태그 목록 (세부 분류) | - |
+| **keywords** (text) | `keywords` | SEO 키워드 (검색엔진용) | `tags` 값 |
+
+##### 테마 지원 속성
+테마에 따라 지원 여부가 달라질 수 있는 속성들입니다.
+
+| 노션 속성 | Hugo 프론트매터 | 설명 |
+|-----------|----------------|------|
+| **featured** (checkbox) | `featured` | 특별히 강조할 게시물 여부 (테마마다 지원 다름) |
+| **subtitle** (text) | `subtitle` | 부제목 (일부 테마에서 지원) |
+| **linkTitle** (text) | `linkTitle` | 링크에 표시될 짧은 제목 |
+| **layout** (text) | `layout` | 사용할 템플릿 레이아웃 |
+
+> **참고**: 속성 이름은 대소문자를 구분하지 않습니다. 예를 들어 "Tags", "tags" 또는 "TAGS"는 모두 동일하게 처리됩니다.
+
 ## 고급 기능
 
 이 섹션에서는 Notion-Hugo 파이프라인의 고급 기능을 설명합니다. 이 기능들은 특별한 요구사항이 있는 사용자를 위한 추가 기능입니다.
