@@ -1,10 +1,6 @@
 mount:
   databases:
-<<<<<<< HEAD
-  - database_id: 1b87522e-eb2f-81d2-bee8-ee26e5eef420
-=======
-  - database_id: 1b87522e-eb2f-81f6-9cc7-e5e1c0bae02d
->>>>>>> origin/main
+  - database_id: eb897916879243289a3612c1b793c43f
     target_folder: posts
   manual: true
 
