@@ -1,5 +1,5 @@
 mount:
   databases:
-  - database_id: 1b67522e-eb2f-813d-9645-e8be1fd0ce0c
+  - database_id: 1b87522e-eb2f-81d2-bee8-ee26e5eef420
     target_folder: posts
   manual: true

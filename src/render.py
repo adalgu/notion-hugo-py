@@ -239,34 +239,37 @@ def get_page_properties(page: Dict[str, Any]) -> Dict[str, Any]:
     
     return properties
 
-def save_page(page: Dict[str, Any], notion: Client, mount: Dict[str, Any]) -> Optional[str]:
+def save_page(page: Dict[str, Any], notion: Client, target_folder: str) -> Optional[str]:
     """
     Notion 페이지를 마크다운 파일로 저장합니다.
     
     Args:
         page: Notion 페이지 객체
         notion: Notion API 클라이언트
-        mount: 마운트 설정
+        target_folder: 대상 폴더 이름
         
     Returns:
-        저장된 파일 경로 또는 None (오류 발생 시)
+        저장된 콘텐츠 또는 None (오류 발생 시)
     """
     try:
+        if not isinstance(page, dict):
+            print(f"[Error] 유효하지 않은 페이지 객체: {type(page)}")
+            return ""
+            
         # 페이지 속성 추출
         properties = get_page_properties(page)
         
         # 제목이 없으면 기본값 사용
         title = properties.get('title', 'Untitled')
         
-        # 파일명 생성 (제목에서 특수문자 제거 및 공백을 하이픈으로 변환)
-        filename = re.sub(r'[^\w\s-]', '', title).strip().lower()
-        filename = re.sub(r'[\s]+', '-', filename)
+        # 페이지 ID 사용 (제목으로 파일명 생성 대신 ID 사용으로 변경)
+        page_id = page.get('id', 'unknown')
         
         # 대상 디렉토리 및 파일 경로 설정
-        target_dir = f"content/{mount['target_folder']}"
+        target_dir = f"content/{target_folder}"
         ensure_directory(target_dir)
         
-        filepath = f"{target_dir}/{filename}.md"
+        filepath = f"{target_dir}/{page_id}.md"
         
         # 페이지 내용 가져오기
         blocks = list(iterate_paginated_api(notion.blocks.children.list, {'block_id': page['id']}))
@@ -291,16 +294,18 @@ def save_page(page: Dict[str, Any], notion: Client, mount: Dict[str, Any]) -> Op
             frontmatter['categories'] = [properties['category']]
         
         # 파일 저장
-        frontmatter_yaml = yaml.dump(frontmatter, default_flow_style=False)
+        frontmatter_yaml = yaml.dump(frontmatter, default_flow_style=False, allow_unicode=True)
+        final_content = f"---\n{frontmatter_yaml}---\n\n{markdown_content}"
+        
         with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(f"---\n{frontmatter_yaml}---\n\n{markdown_content}")
+            f.write(final_content)
         
         print(f"[Info] 페이지 저장 완료: {filepath}")
-        return filepath
+        return final_content
     
     except Exception as e:
         print(f"[Error] 페이지 저장 중 오류 발생: {str(e)}")
-        return None
+        return ""
 
 def batch_process_pages(pages: List[Dict[str, Any]], notion: Client, mount: Dict[str, Any]) -> BatchProcessResult:
     """
@@ -321,6 +326,8 @@ def batch_process_pages(pages: List[Dict[str, Any]], notion: Client, mount: Dict
         "skipped": []
     }
     
+    target_folder = mount.get('target_folder', 'posts')
+    
     for page in pages:
         try:
             # 페이지가 보관 처리되었는지 확인
@@ -332,10 +339,14 @@ def batch_process_pages(pages: List[Dict[str, Any]], notion: Client, mount: Dict
                 continue
             
             # 페이지 저장
-            filepath = save_page(page, notion, mount)
+            content = save_page(page, notion, target_folder)
             
-            if filepath:
-                result["success"].append(page['id'])
+            if content:
+                result["success"].append({
+                    "pageId": page['id'],
+                    "title": page.get('properties', {}).get('Name', {}).get('title', [{}])[0].get('plain_text', 'Untitled') if page.get('properties') else 'Untitled',
+                    "path": f"content/{target_folder}/{page['id']}.md"
+                })
             else:
                 result["errors"].append({
                     "pageId": page['id'],

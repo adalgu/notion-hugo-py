@@ -1,46 +1,41 @@
-# Notion-Hugo 통합 파이프라인 개발 로그
+# Notion-Hugo 개발 히스토리
 
-이 문서는 Notion-Hugo 통합 파이프라인 프로젝트의 개발 로그 및 변경 사항을 목록화한 인덱스입니다.
-각 링크는 해당 개발 단계의 상세 로그로 연결됩니다.
+이 문서는 Notion-Hugo 프로젝트의 주요 개발 단계와 중요 이정표를 추적합니다. 각 단계의 자세한 사항은 개별 개발 로그를 참조하세요.
 
-## 개발 로그
+## 주요 이정표
 
-### 2025-03-14
+### 데이터베이스 설정 및 통합 (2025-03-14)
 
-- [통합 파이프라인 구현](./development_logs/2025-03-14-integration.md): Notion 변환 기능과 Hugo 전처리 기능을 통합한 완전한 파이프라인 구현
-- [노션 DB 자동 설정 및 마이그레이션 기능 추가](./development_logs/2025-03-14-db-setup.md): 노션 데이터베이스 자동 설정 및 마이그레이션 기능 추가
+- [데이터베이스 설정](./development_logs/2025-03-14-db-setup.md): Notion 데이터베이스 자동 생성 및 설정 기능 구현
+- [증분 동기화](./development_logs/2025-03-14-incremental-sync.md): 변경된 페이지만 선택적으로 처리하는 기능 구현
+- [Hugo 통합](./development_logs/2025-03-14-integration.md): Notion 페이지를 마크다운으로 변환하고 Hugo와 통합하는 파이프라인 구현
 
-## 개요
+### 버그 수정 및 안정화 (2025-03-17)
 
-Notion-Hugo 통합 파이프라인은 Notion을 CMS로 사용하여 작성한 콘텐츠를 Hugo 정적 사이트 생성기에 자동으로 연결하는 도구입니다.
-이 프로젝트는 다음과 같은 핵심 기능을 제공합니다:
+- [Notion API 오류 수정](./development_logs/2025-03-17-bug-fix-notion-api-errors.md): Notion API 변경 사항 대응 및 메타데이터 관련 오류 수정
+  - 워크스페이스 루트에 데이터베이스 생성 오류 해결
+  - 메타데이터 파일 관리 개선
+  - 타입 안전성 강화
+- [CLI 인터페이스 개선](./development_logs/2025-03-17-feature-ui-flow-improvement.md): 사용자 경험 향상 및 문서 개선
+  - 대화형 설정 모드 추가 (`--interactive` 또는 `-i` 플래그)
+  - 노션 ID 처리 및 검증 개선
+  - 사용자 중심 흐름도 및 README 구조 개선
+  - CI/CD 통합 예시 추가
+- [아키텍처 검토 및 구조 복원](./development_logs/2025-03-17-architecture-review.md): 프로젝트 구조 단순화
+  - 과도한 모듈화 구조 검토 및 비판적 분석
+  - 프로젝트 규모에 맞는 간단한 파일 구조로 복원
+  - 파일 구조 및 문서 업데이트
 
-1. Notion 데이터베이스 자동 설정 및 마이그레이션
-2. Notion API를 통한 콘텐츠 가져오기
-3. 마크다운 변환 및 Hugo 호환 처리
-4. Hugo 전처리 및 빌드 자동화
-5. 오류 처리 및 복구 메커니즘
+## 향후 계획
 
-## 주요 기능
+### 기능 확장 (예정)
 
-- Notion 데이터베이스에서 콘텐츠 가져오기
-- 마크다운으로 변환 및 Hugo 콘텐츠 저장
-- Hugo 전처리를 통한 빌드 오류 방지
-- Hugo 빌드 및 서버 실행
-- 노션 데이터베이스 자동 설정 및 샘플 콘텐츠 생성
-- 기존 노션 데이터베이스에서 마이그레이션
+- 템플릿 커스터마이징: 사용자 정의 마크다운 템플릿 지원
+- 미디어 파일 최적화: 이미지 및 첨부 파일 최적화 처리
+- 국제화(i18n) 지원: 다국어 콘텐츠 관리
 
-## 사용 방법
+### 지속적 개선 (진행 중)
 
-기본 사용 방법:
-
-```bash
-# 전체 파이프라인 실행
-python notion_hugo_app.py
-
-# 새 데이터베이스 설정
-python notion_hugo_app.py --setup-db --parent-page=YOUR_PAGE_ID
-
-# 기존 데이터베이스 마이그레이션
-python notion_hugo_app.py --migrate-db --source-db=SOURCE_DB_ID --parent-page=TARGET_PAGE_ID
-```
+- 테스트 케이스 추가: 다양한 Notion 블록 유형 및 에지 케이스 테스트
+- 성능 최적화: 대규모 콘텐츠 처리 시 성능 개선
+- 문서화: 사용자 가이드 및 API 문서 개선
