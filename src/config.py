@@ -17,8 +17,14 @@ class Mount(TypedDict):
     databases: List[DatabaseMount]
     pages: List[PageMount]
 
+class FilenameConfig(TypedDict):
+    format: str
+    date_format: str
+    korean_title: str
+
 class Config(TypedDict):
     mount: Mount
+    filename: Optional[FilenameConfig]
 
 class UserMount(TypedDict):
     manual: bool
@@ -47,8 +53,17 @@ def load_config() -> Config:
         "mount": {
             "databases": [],
             "pages": []
+        },
+        "filename": {
+            "format": "uuid",  # 기본값은 기존 방식과 동일
+            "date_format": "%Y-%m-%d",
+            "korean_title": "slug"
         }
     }
+    
+    # 파일명 설정이 있으면 로드
+    if 'filename' in user_config:
+        config['filename'].update(user_config['filename'])
     
     # 마운트 설정 구성
     if user_config['mount']['manual']:

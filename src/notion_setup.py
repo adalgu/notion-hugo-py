@@ -55,46 +55,97 @@ class NotionSetup:
             데이터베이스 속성 정의
         """
         return {
+            # 최소한 속성 (필수)
             "Name": {
                 "title": {}
             },
-            "Description": {
-                "rich_text": {}
+            "Date": {
+                "date": {}
+            },
+            
+            # 콘텐츠 제어 속성 (추천)
+            "skipRendering": {
+                "checkbox": {}
             },
             "isPublished": {
                 "checkbox": {}
             },
+            "expiryDate": {
+                "date": {}
+            },
+            
+            # 메타데이터 속성 (추천)
+            "Description": {
+                "rich_text": {}
+            },
+            "Summary": {
+                "rich_text": {}
+            },
+            "lastModified": {
+                "date": {}
+            },
+            "slug": {
+                "rich_text": {}
+            },
+            "Author": {
+                "rich_text": {}
+            },
+            "weight": {
+                "number": {}
+            },
+            
+            # 분류 속성 (추천)
+            "categories": {
+                "multi_select": {
+                    "options": [
+                        {"name": "Web Development", "color": "blue"},
+                        {"name": "Programming", "color": "green"},
+                        {"name": "Technology", "color": "purple"}
+                    ]
+                }
+            },
+            "Tags": {
+                "multi_select": {
+                    "options": [
+                        {"name": "Tutorial", "color": "yellow"},
+                        {"name": "Design", "color": "red"},
+                        {"name": "API", "color": "orange"},
+                        {"name": "Database", "color": "gray"}
+                    ]
+                }
+            },
+            "keywords": {
+                "rich_text": {}
+            },
+            
+            # 테마 지원 속성 (추천)
+            "featured": {
+                "checkbox": {}
+            },
+            "subtitle": {
+                "rich_text": {}
+            },
+            "linkTitle": {
+                "rich_text": {}
+            },
+            "layout": {
+                "rich_text": {}
+            },
+            
+            # 시스템 시간 속성 (자동)
             "Created time": {
                 "date": {}
             },
             "Last Updated": {
                 "last_edited_time": {}
             },
-            "Tags": {
-                "multi_select": {
-                    "options": [
-                        {"name": "Web Development", "color": "blue"},
-                        {"name": "Programming", "color": "green"},
-                        {"name": "Design", "color": "red"},
-                        {"name": "Tutorial", "color": "yellow"},
-                        {"name": "Technology", "color": "purple"}
-                    ]
-                }
-            },
-            "Author": {
-                "rich_text": {}
-            },
+            
+            # 추가 속성 (선택)
             "ShowToc": {
                 "checkbox": {}
             },
             "HideSummary": {
                 "checkbox": {}
-            },
-            "isFeatured": {
-                "checkbox": {}
-            },
-            "Subtitle": {
-                "rich_text": {}
             }
         }
 
@@ -176,6 +227,7 @@ class NotionSetup:
         
         # 페이지 속성 정의
         properties = {
+            # 최소한 속성 (필수)
             "Name": {
                 "title": [
                     {
@@ -185,6 +237,26 @@ class NotionSetup:
                     }
                 ]
             },
+            "Date": {
+                "date": {
+                    "start": now
+                }
+            },
+            
+            # 콘텐츠 제어 속성 (추천)
+            "skipRendering": {
+                "checkbox": False
+            },
+            "isPublished": {
+                "checkbox": True
+            },
+            "expiryDate": {
+                "date": {
+                    "start": None  # 만료 날짜 없음
+                }
+            },
+            
+            # 메타데이터 속성 (추천)
             "Description": {
                 "rich_text": [
                     {
@@ -194,18 +266,22 @@ class NotionSetup:
                     }
                 ]
             },
-            "isPublished": {
-                "checkbox": True
+            "Summary": {
+                "rich_text": [
+                    {
+                        "text": {
+                            "content": "Notion을 CMS로 사용하고 Hugo로 정적 사이트를 생성하는 블로그 시스템을 시작하는 방법"
+                        }
+                    }
+                ]
             },
-            "Created time": {
-                "date": {
-                    "start": now
-                }
-            },
-            "Tags": {
-                "multi_select": [
-                    {"name": "Tutorial"},
-                    {"name": "Technology"}
+            "slug": {
+                "rich_text": [
+                    {
+                        "text": {
+                            "content": "getting-started-first-blog-post"
+                        }
+                    }
                 ]
             },
             "Author": {
@@ -217,8 +293,69 @@ class NotionSetup:
                     }
                 ]
             },
+            "weight": {
+                "number": 1  # 상위에 표시될 첫 번째 포스트
+            },
+            
+            # 분류 속성 (추천)
+            "categories": {
+                "multi_select": [
+                    {"name": "Technology"}
+                ]
+            },
+            "Tags": {
+                "multi_select": [
+                    {"name": "Tutorial"},
+                    {"name": "Hugo"},
+                    {"name": "Notion"}
+                ]
+            },
+            "keywords": {
+                "rich_text": [
+                    {
+                        "text": {
+                            "content": "notion,hugo,blog,tutorial,시작하기"
+                        }
+                    }
+                ]
+            },
+            
+            # 테마 지원 속성 (추천)
+            "featured": {
+                "checkbox": True
+            },
+            "subtitle": {
+                "rich_text": [
+                    {
+                        "text": {
+                            "content": "Notion과 Hugo로 블로그 시작하기"
+                        }
+                    }
+                ]
+            },
+            
+            # 시스템 속성 (자동)
+            "Created time": {
+                "date": {
+                    "start": now
+                }
+            },
+            
+            # 추가 속성 (선택)
             "ShowToc": {
                 "checkbox": True
+            },
+            "HideSummary": {
+                "checkbox": False
+            },
+            "linkTitle": {
+                "rich_text": [
+                    {
+                        "text": {
+                            "content": "시작하기"
+                        }
+                    }
+                ]
             }
         }
         
@@ -388,8 +525,20 @@ class NotionSetup:
             database_id: 데이터베이스 ID
             target_folder: 대상 폴더 이름
         """
-        config = {
-            "mount": {
+        # 기존 설정 파일이 있으면 로드
+        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'notion-hugo.config.yaml')
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as file:
+                try:
+                    config = yaml.safe_load(file) or {}
+                except:
+                    config = {}
+        else:
+            config = {}
+        
+        # 마운트 설정 업데이트 또는 생성
+        if 'mount' not in config:
+            config['mount'] = {
                 "manual": True,
                 "databases": [
                     {
@@ -398,7 +547,33 @@ class NotionSetup:
                     }
                 ]
             }
-        }
+        else:
+            config['mount']['manual'] = True
+            if 'databases' not in config['mount']:
+                config['mount']['databases'] = []
+            
+            # 동일 데이터베이스가 있는지 확인
+            db_exists = False
+            for i, db in enumerate(config['mount'].get('databases', [])):
+                if db.get('database_id') == database_id:
+                    config['mount']['databases'][i]['target_folder'] = target_folder
+                    db_exists = True
+                    break
+            
+            # 없으면 추가
+            if not db_exists:
+                config['mount']['databases'].append({
+                    "database_id": database_id,
+                    "target_folder": target_folder
+                })
+        
+        # 파일명 설정 업데이트 또는 생성
+        if 'filename' not in config:
+            config['filename'] = {
+                "format": "date-title",
+                "date_format": "%Y-%m-%d",
+                "korean_title": "slug"
+            }
         
         # YAML 파일 작성
         config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'notion-hugo.config.yaml')
@@ -605,12 +780,11 @@ class NotionMigration(NotionSetup):
         
         # 필수 속성 및 예상 유형
         required_properties = {
-            "Name": "title",
-            "isPublished": "checkbox",
-            "Description": "rich_text",
-            "Tags": "multi_select",
-            "Created time": "date",
-            "Last Updated": "last_edited_time"
+            "Name": "title",  # 제목은 필수
+            "Description": "rich_text",  # 설명은 필수
+            "Tags": "multi_select",  # 태그는 필수
+            "Created time": "date",  # 생성 시간은 필수
+            "Last Updated": "last_edited_time"  # 마지막 수정 시간은 필수
         }
         
         # 필수 속성 확인
@@ -764,9 +938,13 @@ class NotionMigration(NotionSetup):
         Returns:
             변환된 속성
         """
+        from datetime import datetime
+        now = datetime.now().isoformat()
+        
         # 속성 복사 및 기본값 설정
         transformed = {}
         
+        # 필수 속성
         # Name 속성
         if "Name" in properties and properties["Name"]["type"] == "title":
             transformed["Name"] = {
@@ -777,15 +955,28 @@ class NotionMigration(NotionSetup):
                 "title": []
             }
         
-        # isPublished 속성
-        if "isPublished" in properties and properties["isPublished"]["type"] == "checkbox":
-            transformed["isPublished"] = {
-                "checkbox": properties["isPublished"]["checkbox"]
-            }
-        else:
-            transformed["isPublished"] = {
-                "checkbox": False
-            }
+        # Date 속성 (발행일) - 소스에 date 속성이 있으면 사용, 없으면 Created time 사용
+        date_found = False
+        for prop_name, prop in properties.items():
+            if prop["type"] == "date" and prop_name != "Created time":
+                transformed["Date"] = {
+                    "date": prop["date"]
+                }
+                date_found = True
+                break
+        
+        # Date 속성이 없으면 Created time 사용
+        if not date_found:
+            if "Created time" in properties and properties["Created time"]["type"] == "date":
+                transformed["Date"] = {
+                    "date": properties["Created time"]["date"]
+                }
+            else:
+                transformed["Date"] = {
+                    "date": {
+                        "start": now
+                    }
+                }
         
         # Description 속성
         if "Description" in properties and properties["Description"]["type"] == "rich_text":
@@ -797,6 +988,56 @@ class NotionMigration(NotionSetup):
                 "rich_text": []
             }
         
+        # 특수 속성
+        # isPublished 속성
+        if "isPublished" in properties and properties["isPublished"]["type"] == "checkbox":
+            transformed["isPublished"] = {
+                "checkbox": properties["isPublished"]["checkbox"]
+            }
+        else:
+            transformed["isPublished"] = {
+                "checkbox": False
+            }
+        
+        # doNotRendering 속성
+        if "doNotRendering" in properties and properties["doNotRendering"]["type"] == "checkbox":
+            transformed["doNotRendering"] = {
+                "checkbox": properties["doNotRendering"]["checkbox"]
+            }
+        else:
+            transformed["doNotRendering"] = {
+                "checkbox": False
+            }
+        
+        # draft 속성 (isPublished의 반대)
+        if "draft" in properties and properties["draft"]["type"] == "checkbox":
+            transformed["draft"] = {
+                "checkbox": properties["draft"]["checkbox"]
+            }
+        else:
+            # isPublished가 True면 draft는 False
+            is_published = False
+            if "isPublished" in properties and properties["isPublished"]["type"] == "checkbox":
+                is_published = properties["isPublished"]["checkbox"]
+                
+            transformed["draft"] = {
+                "checkbox": not is_published
+            }
+        
+        # 시스템 속성
+        # Created time 속성
+        if "Created time" in properties and properties["Created time"]["type"] == "date":
+            transformed["Created time"] = {
+                "date": properties["Created time"]["date"]
+            }
+        else:
+            transformed["Created time"] = {
+                "date": {
+                    "start": now
+                }
+            }
+        
+        # 선택적 속성
         # Tags 속성
         if "Tags" in properties and properties["Tags"]["type"] == "multi_select":
             tags = []
@@ -818,20 +1059,28 @@ class NotionMigration(NotionSetup):
                 "multi_select": []
             }
         
-        # Created time 속성
-        if "Created time" in properties and properties["Created time"]["type"] == "date":
-            transformed["Created time"] = {
-                "date": properties["Created time"]["date"]
+        # slug 속성
+        # 슬러그가 있으면 사용, 없으면 제목에서 생성
+        if "slug" in properties and properties["slug"]["type"] == "rich_text" and properties["slug"]["rich_text"]:
+            transformed["slug"] = {
+                "rich_text": properties["slug"]["rich_text"]
             }
         else:
-            from datetime import datetime
-            transformed["Created time"] = {
-                "date": {
-                    "start": datetime.now().isoformat()
-                }
+            # 제목에서 슬러그 생성
+            title = "untitled"
+            if "Name" in properties and properties["Name"]["type"] == "title" and properties["Name"]["title"]:
+                title = "".join(text_obj.get("plain_text", "") for text_obj in properties["Name"]["title"])
+            
+            # 슬러그 생성 (영문 소문자, 숫자, 하이픈만 사용)
+            import re
+            slug = re.sub(r'[^\w\s-]', '', title.lower())
+            slug = re.sub(r'[\s]+', '-', slug)
+            
+            transformed["slug"] = {
+                "rich_text": [{"type": "text", "text": {"content": slug}}]
             }
         
-        # 나머지 속성
+        # 기타 선택적 속성
         for prop_name, default_value in [
             ("Author", {"rich_text": [{"type": "text", "text": {"content": "작성자 이름"}}]}),
             ("ShowToc", {"checkbox": True}),
