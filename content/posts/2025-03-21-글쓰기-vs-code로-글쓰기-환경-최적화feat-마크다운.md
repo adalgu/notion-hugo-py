@@ -1,9 +1,9 @@
 ---
 author: Gunn Kim
-date: '2025-03-16T19:05:00.000Z'
+date: '2025-03-10T06:32:00.000Z'
 draft: true
-lastmod: '2025-03-16T19:05:00.000Z'
-notion_id: 1b87522e-eb2f-81fa-996f-d4c20883d92f
+lastmod: '2025-03-21T02:44:00.000Z'
+notion_id: 1b27522e-eb2f-8165-8fbc-d6e390ee88bc
 subtitle: 네이버 블로그, 브런치 같이 이미지를 쉽게 붙여넣자
 title: '[글쓰기] VS Code로 글쓰기 환경 최적화(feat. 마크다운)'
 ---
