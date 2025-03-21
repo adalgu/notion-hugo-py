@@ -264,10 +264,6 @@ def save_page(page: Dict[str, Any], notion: Client, target_folder: str) -> Optio
         # PropertyMapper 사용하여 필수/선택적 속성 처리
         property_mapper = PropertyMapper()
         
-<<<<<<< HEAD
-        # 페이지 ID 사용 (제목으로 파일명 생성 대신 ID 사용으로 변경)
-        page_id = page.get('id', 'unknown')
-=======
         # doNotRendering 확인
         if property_mapper.should_skip_page(properties):
             print(f"[Info] 페이지 {page.get('id')} 건너뜀: Do Not Render 설정됨")
@@ -279,19 +275,14 @@ def save_page(page: Dict[str, Any], notion: Client, target_folder: str) -> Optio
         # 설정 로드
         from .config import load_config
         config = load_config()
->>>>>>> origin/main
         
         # 대상 디렉토리 및 파일 경로 설정
         target_dir = f"content/{target_folder}"
         ensure_directory(target_dir)
         
-<<<<<<< HEAD
-        filepath = f"{target_dir}/{page_id}.md"
-=======
         # 파일명 생성 (설정에 따라 UUID 또는 다른 형식)
         filename = get_filename_with_extension(properties, page_id, config.get('filename', {}))
         filepath = f"{target_dir}/{filename}"
->>>>>>> origin/main
         
         # 페이지 내용 가져오기
         blocks = list(iterate_paginated_api(notion.blocks.children.list, {'block_id': page['id']}))
@@ -336,10 +327,7 @@ def batch_process_pages(pages: List[Dict[str, Any]], notion: Client, mount: Dict
     }
     
     target_folder = mount.get('target_folder', 'posts')
-<<<<<<< HEAD
-=======
     property_mapper = PropertyMapper()
->>>>>>> origin/main
     
     for page in pages:
         try:
@@ -351,16 +339,6 @@ def batch_process_pages(pages: List[Dict[str, Any]], notion: Client, mount: Dict
                 })
                 continue
             
-<<<<<<< HEAD
-            # 페이지 저장
-            content = save_page(page, notion, target_folder)
-            
-            if content:
-                result["success"].append({
-                    "pageId": page['id'],
-                    "title": page.get('properties', {}).get('Name', {}).get('title', [{}])[0].get('plain_text', 'Untitled') if page.get('properties') else 'Untitled',
-                    "path": f"content/{target_folder}/{page['id']}.md"
-=======
             # 페이지 속성 추출하여 doNotRendering 확인
             properties = get_page_properties(page)
             if property_mapper.should_skip_page(properties):
@@ -388,7 +366,6 @@ def batch_process_pages(pages: List[Dict[str, Any]], notion: Client, mount: Dict
                     "pageId": page['id'],
                     "title": title,
                     "path": f"content/{target_folder}/{filename}"
->>>>>>> origin/main
                 })
             else:
                 result["errors"].append({
